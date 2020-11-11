@@ -1,0 +1,22 @@
+{
+  "name": "chart",
+  "version": "1.0.0",
+  "description": "",
+  "main": "chart-tool.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mheine94/chart-tool.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mheine94/chart-tool/issues"
+  },
+  "homepage": "https://github.com/mheine94/chart-tool#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}

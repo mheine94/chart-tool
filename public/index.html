@@ -1,0 +1,195 @@
+<meta charset="utf-8" />
+<script type='module' src='Chart.bundle.js'></script>
+<main>
+    <h1>Chart</h1>
+    <input type="file" id="input" multiple>
+	<canvas id="myChart" width="400" height="400"></canvas>
+<script>
+	function getRandomColor() {
+  var letters = '0123456789ABCDEF';
+  var color = '#';
+  for (var i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+// Any of the following formats may be used
+var ctx = document.getElementById('myChart');
+  window.addEventListener('load', function() {
+  var upload = document.getElementById('input');
+  
+  // Make sure the DOM element exists
+  if (upload) 
+  {
+    upload.addEventListener('change', function() {
+      // Make sure a file was selected
+      if (upload.files.length > 0) 
+      {
+        var reader = new FileReader(); // File reader to read the file 
+        
+        // This event listener will happen when the reader has read the file
+        reader.addEventListener('load', function() {
+          var result = JSON.parse(reader.result); // Parse the result into an object 
+          
+		  var keys = Object.keys(result)
+		  let datasets = {}
+		  let labelsArray = []
+		  
+		  for(let i = 0 ; i< Math.min(20,keys.length); i++){
+			  let name = keys[i]
+			  labelsArray.push(name)
+			  let set = result[name] ?? {}
+			  let setKeys = Object.keys(set)
+			  for(let j= 0; j< setKeys.length;j++){
+				let curKey = setKeys[j]  
+				if(!datasets[curKey]){
+					datasets[curKey]= {
+						label: curKey,
+						backgroundColor: getRandomColor(),
+						data:[]
+					}
+				}
+				datasets[curKey].data.push({x:"name-00-00",y:set[curKey]})
+			  }
+		  }
+
+		  let dataSetArray = Object.values(datasets)
+/*
+* chart.js do not support stacked bar charts, which are sorted by value,
+* therefore it's needed to perform this functionality with custom plugins
+*/
+Chart.plugins.register({
+
+/*
+* Sorts data by value and calculates values for bar stacks
+*/
+beforeDraw(chart) {
+
+    // create data container in chart instance
+    chart.sortedData = {};
+    
+    // iterate over datasets
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+    
+        // iterate over dataset records
+        dataset.data.forEach((data, index) => {
+        
+            // create data container for bar stack data
+            if(!chart.sortedData[index]) {
+                chart.sortedData[index] = {
+                    data: []
+                };
+            }
+            
+            // save data
+            chart.sortedData[index].data[datasetIndex] = {
+                datasetIndex: datasetIndex,
+                hidden: chart.getDatasetMeta(datasetIndex).hidden ? true : false,
+                color: dataset.backgroundColor,
+                value: dataset.data[index].y,
+                y: chart.getDatasetMeta(datasetIndex).data[index]._model.y,
+                base: chart.getDatasetMeta(datasetIndex).data[index]._model.base,
+            };
+            
+        });
+    });
+    
+    var chartTop = chart.scales['y-axis-0'].top;
+    var max = chart.scales['y-axis-0'].max;
+    var h = chart.scales['y-axis-0'].height / max;
+    
+    // iterate over datasets
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+        
+        // iterate over dataset records
+        dataset.data.forEach((data, index) => {
+        
+            // sort data in bar stack by value
+            chart.sortedData[index].data = Object.keys(chart.sortedData[index].data)
+                .map(k => chart.sortedData[index].data[k])
+                .sort((a, b) => a.value - b.value);
+                
+            // iterate over stack records
+            chart.sortedData[index].data.forEach((d, i) => {
+            
+                // calculate base value
+                d.base = chartTop + (max - Object.keys(chart.sortedData[index].data)
+                    .map(k => chart.sortedData[index].data[k].value)
+                    .reduce((a, b) => a + b, 0)) * h
+                    + Object.keys(chart.sortedData[index].data)
+                    .map(k => chart.sortedData[index].data[k])
+                    .filter(d => d.hidden)
+                    .reduce((a, b) => a + b.value, 0) * h;                  
+                
+                // increase base value with values of previous records
+                for (var j = 0; j < i; j++) {
+                    d.base += chart.sortedData[index].data[j].hidden 
+                        ? 0 
+                        : h * chart.sortedData[index].data[j].value;
+                }
+                
+                // set y value
+                d.y = d.base + h * d.value;
+                
+            });
+        });
+    });
+},
+
+/*
+* Sets values for base and y
+*/
+beforeDatasetDraw(chart, args) {
+    chart.getDatasetMeta(args.index).data.forEach((data, index) => {
+        var el = chart.sortedData[index].data.filter(e => e.datasetIndex === args.index)[0];
+        data._model.y = el.y;
+        data._model.base = el.base;
+    });
+   }
+   
+});
+
+var chart = new Chart(ctx, {
+                type : 'bar',
+                data : {
+                    labels : labelsArray,
+                    datasets : dataSetArray,
+                    borderWidth : 1
+                },
+                options : {
+                    responsive : true,
+                    maintainAspectRatio : false,
+                    title : {
+                        display : true,
+                        text : 'Test'
+                    },
+                    scales : {
+                        xAxes : [ {
+							stacked : true,
+							time : {
+								unit : 'year'
+							}
+                        } ],
+                        yAxes : [ {
+                            stacked : true,
+                        } ]
+                    }
+                }
+            });
+
+
+
+
+	
+
+        });
+        
+		reader.readAsText(upload.files[0]); // Read the uploaded file
+      }
+    });
+  }
+});
+</script>
+</main>
+
